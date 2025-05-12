@@ -1,23 +1,55 @@
-import fs from 'fs/promises';
-import path from 'path';
 import { config } from '../utils/config';
+import { GoogleDocsService } from '../services/googleDocsService';
 
 let currentPrompt: string = '';
+let googleDocsService: GoogleDocsService | null = null;
 
 /**
- * 指定されたファイルパスからプロンプト文字列を読み込む
+ * プロンプトを読み込む
+ * Googleドキュメントからプロンプトを読み込みます
  * @returns Promise<void>
  */
 export async function loadPrompt(): Promise<void> {
   try {
-    const filePath = path.resolve(config.promptFilePath);
-    currentPrompt = await fs.readFile(filePath, 'utf-8');
-    console.log(`Prompt loaded successfully from ${filePath}`);
+    // GoogleドキュメントIDが設定されているか確認
+    if (!config.googleDocId) {
+      throw new Error('GoogleドキュメントIDが設定されていません');
+    }
+
+    // Googleドキュメントからプロンプトを読み込む
+    await loadPromptFromGoogleDocs(config.googleDocId);
   } catch (error) {
-    console.error(`Error loading prompt from ${config.promptFilePath}:`, error);
-    // フォールバックとしてハードコードされたプロンプトを設定
-    currentPrompt = "ユーザーの質問「{{user_message}}」に簡潔に答えてください。"; // デフォルトプロンプト
-    console.warn("Using fallback prompt due to error loading prompt file.");
+    console.error(`Error loading prompt:`, error);
+    // エラーメッセージを設定
+    currentPrompt = "ドキュメントの読み込みに失敗しました。管理者に問い合わせてください。";
+    console.warn("Using error message prompt due to failure loading from Google Docs.");
+  }
+}
+
+// ローカルファイルからの読み込み機能は削除しました
+
+/**
+ * Googleドキュメントからプロンプトを読み込む
+ * @param documentId GoogleドキュメントID
+ * @returns Promise<void>
+ */
+async function loadPromptFromGoogleDocs(documentId: string): Promise<void> {
+  try {
+    // Google Docsサービスの初期化
+    if (!googleDocsService) {
+      googleDocsService = new GoogleDocsService();
+      const initialized = await googleDocsService.initialize();
+      if (!initialized) {
+        throw new Error('Google Docsサービスの初期化に失敗しました');
+      }
+    }
+    
+    // ドキュメントからプロンプトを取得
+    currentPrompt = await googleDocsService.getPromptFromDoc(documentId);
+    console.log(`Prompt loaded successfully from Google Doc: ${documentId}`);
+  } catch (error) {
+    console.error(`Error loading prompt from Google Doc ${documentId}:`, error);
+    throw error;
   }
 }
 
@@ -27,9 +59,9 @@ export async function loadPrompt(): Promise<void> {
  */
 export function getPrompt(): string {
   if (!currentPrompt) {
-    // 通常はloadPromptでロードされるが、万が一空の場合のフォールバック
-    console.warn("Prompt is not loaded. Using default fallback prompt.");
-    return "ユーザーの質問「{{user_message}}」に簡潔に答えてください。";
+    // プロンプトがロードされていない場合はエラーメッセージを表示
+    console.warn("Prompt is not loaded. Using error message prompt.");
+    return "ドキュメントの読み込みに失敗しました。管理者に問い合わせてください。";
   }
   return currentPrompt;
 }
