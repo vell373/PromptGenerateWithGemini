@@ -80,9 +80,10 @@ async function handleMessage(message: Message): Promise<void> {
 }
 
 /**
- * メイン関数
+ * ボットを初期化する関数
+ * index.tsから呼び出されるためにエクスポート
  */
-async function main() {
+export async function initializeBot() {
   try {
     console.log("Loading prompt...");
     await loadPrompt(); // Bot起動時にプロンプトをロード
@@ -91,14 +92,17 @@ async function main() {
     await initializeDiscordClient(handleMessage);
     
     console.log("Discord Bot is running!");
+    return true;
   } catch (error) {
     console.error("Failed to start the bot:", error);
-    process.exit(1);
+    throw error;
   }
 }
 
-// Botを起動
-main().catch(error => {
-  console.error("Unhandled error in main:", error);
-  process.exit(1);
-});
+// 直接実行された場合のみ起動する
+if (require.main === module) {
+  initializeBot().catch(error => {
+    console.error("Unhandled error in initializeBot:", error);
+    process.exit(1);
+  });
+}
