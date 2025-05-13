@@ -3,6 +3,7 @@ node_modules/
 
 # 環境変数
 .env
+src/config/token.json
 
 # ビルド出力
 dist/
