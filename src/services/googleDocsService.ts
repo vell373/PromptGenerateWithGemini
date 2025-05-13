@@ -23,33 +23,78 @@ export class GoogleDocsService {
    */
   async initialize(): Promise<boolean> {
     try {
-      // 認証情報のパスを取得
-      const credentialsPath = config.googleCredentialsPath;
+      console.log('Google Docs APIクライアントの初期化を開始します');
       
-      if (!credentialsPath || !fs.existsSync(credentialsPath)) {
-        console.error(`Google認証情報ファイルが見つかりません: ${credentialsPath}`);
-        return false;
+      let credentials;
+      let token;
+      
+      // 環境変数から認証情報を読み込む試行
+      if (process.env.GOOGLE_CREDENTIALS_JSON) {
+        try {
+          console.log('環境変数から認証情報を読み込みます');
+          credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+          console.log('環境変数から認証情報を読み込みました');
+        } catch (envError) {
+          console.error('環境変数からの認証情報の解析に失敗しました:', envError);
+        }
       }
+      
+      // ファイルから認証情報を読み込む試行（環境変数が失敗した場合）
+      if (!credentials) {
+        const credentialsPath = config.googleCredentialsPath;
+        console.log(`ファイルから認証情報を読み込みます: ${credentialsPath}`);
+        
+        if (!credentialsPath || !fs.existsSync(credentialsPath)) {
+          console.error(`Google認証情報ファイルが見つかりません: ${credentialsPath}`);
+          return false;
+        }
 
-      // 認証情報を読み込む
-      const credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+        try {
+          credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+          console.log('ファイルから認証情報を読み込みました');
+        } catch (fileError) {
+          console.error('ファイルからの認証情報の読み込みに失敗しました:', fileError);
+          return false;
+        }
+      }
       
       // OAuth2クライアントを作成
       const { client_secret, client_id, redirect_uris } = credentials.installed || credentials.web;
       const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+      console.log('OAuth2クライアントを作成しました');
 
-      // トークンのパスを取得
-      const tokenPath = path.join(path.dirname(credentialsPath), 'token.json');
-      
-      // トークンが存在するか確認
-      if (!fs.existsSync(tokenPath)) {
-        console.error(`Googleトークンファイルが見つかりません: ${tokenPath}`);
-        console.error('トークンを取得するには、getGoogleToken.ts スクリプトを実行してください');
-        return false;
+      // 環境変数からトークンを読み込む試行
+      if (process.env.GOOGLE_TOKEN_JSON) {
+        try {
+          console.log('環境変数からトークンを読み込みます');
+          token = JSON.parse(process.env.GOOGLE_TOKEN_JSON);
+          console.log('環境変数からトークンを読み込みました');
+        } catch (envTokenError) {
+          console.error('環境変数からのトークンの解析に失敗しました:', envTokenError);
+        }
       }
+      
+      // ファイルからトークンを読み込む試行（環境変数が失敗した場合）
+      if (!token) {
+        const tokenPath = path.join(path.dirname(config.googleCredentialsPath), 'token.json');
+        console.log(`ファイルからトークンを読み込みます: ${tokenPath}`);
+        
+        if (!fs.existsSync(tokenPath)) {
+          console.error(`Googleトークンファイルが見つかりません: ${tokenPath}`);
+          console.error('トークンを取得するには、getGoogleToken.ts スクリプトを実行してください');
+          return false;
+        }
 
-      // トークンを読み込む
-      const token = JSON.parse(fs.readFileSync(tokenPath, 'utf8'));
+        try {
+          token = JSON.parse(fs.readFileSync(tokenPath, 'utf8'));
+          console.log('ファイルからトークンを読み込みました');
+        } catch (fileTokenError) {
+          console.error('ファイルからのトークンの読み込みに失敗しました:', fileTokenError);
+          return false;
+        }
+      }
+      
+      // トークンを設定
       oAuth2Client.setCredentials(token);
 
       // Google Docs APIクライアントを初期化
