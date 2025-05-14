@@ -4,7 +4,7 @@
   "description": "Discord Bot that uses Google's Gemini API to respond to user messages",
   "main": "dist/bot.js",
   "scripts": {
-    "start": "node dist/bot.js",
+    "start": "node dist/index.js",
     "dev": "ts-node src/bot.ts",
     "build": "tsc",
     "watch": "tsc -w"
