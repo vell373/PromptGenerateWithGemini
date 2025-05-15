@@ -26,8 +26,17 @@ export function initializeDiscordClient(onMessageHandler: (message: Message) => 
 
     client.on('messageCreate', async (message) => {
       if (message.author.bot) return; // Bot自身のメッセージは無視
-      if (!client.user || !message.mentions.has(client.user.id)) return; // Botへのメンションがない場合は無視
 
+      // Botへの直接メンションのみを処理（@here, @everyoneは除外）
+      if (!client.user) return;
+
+      // メンションの配列を取得し、botへの直接メンションがあるか確認
+      const hasBotMention = message.mentions.users.has(client.user.id);
+
+      // botへの直接メンションがない場合は処理しない
+      if (!hasBotMention) return;
+
+      // @hereや@everyoneのメンションがある場合でも、botへの直接メンションがあれば処理する
       await onMessageHandler(message);
     });
 
